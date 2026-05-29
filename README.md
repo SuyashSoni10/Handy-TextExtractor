@@ -1,6 +1,6 @@
 # extract_text.py — Image & PDF Text Extractor
 
-Extract human-readable text from images and PDFs using Claude's vision AI.  
+Extract human-readable text from images and PDFs using Llama 3.1 vision via Groq.  
 Tables are reconstructed as Markdown. Graphs and diagrams are skipped.
 
 ---
@@ -8,14 +8,20 @@ Tables are reconstructed as Markdown. Graphs and diagrams are skipped.
 ## Requirements
 
 ```bash
-pip install anthropic pymupdf pillow
+pip install openai pymupdf pillow python-dotenv
 ```
 
-You also need an **Anthropic API key** set as an environment variable:
+---
 
-```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
+## API key setup
+
+Create a `.env` file in the **same folder as the script**:
+
 ```
+GROQ_API_KEY=gsk_...
+```
+
+The script loads it automatically on startup — no need to set environment variables manually.
 
 ---
 
@@ -48,13 +54,12 @@ python extract_text.py invoice.pdf -o invoice_text
 
 ## Output format
 
-| Content found         | Output format |
-|-----------------------|---------------|
-| Plain text only       | `.txt`        |
-| Tables, headings, or  | `.md`         |
-| structured content    |               |
+| Content found                      | Output format |
+|------------------------------------|---------------|
+| Plain text only                    | `.txt`        |
+| Tables, headings, or structured content | `.md`    |
 
-The output format is chosen **automatically** based on what Claude detects.  
+The output format is chosen **automatically** based on what the model detects.  
 If you pass `-o myfile`, the correct extension (`.txt` or `.md`) is appended.
 
 ---
@@ -69,8 +74,8 @@ Documents: `.pdf` (each page rendered at 150 DPI)
 ## How it works
 
 1. **PDF pages** are rasterised to PNG images (150 DPI) via PyMuPDF.
-2. Each image is sent to **Claude** with a strict OCR prompt.
-3. Claude returns structured text — plain paragraphs, Markdown tables, headings, and lists — while ignoring charts and decorative graphics.
+2. Each image is sent to **Llama 3.1 8B** (via Groq) with a strict OCR prompt.
+3. The model returns structured text — plain paragraphs, Markdown tables, headings, and lists — while ignoring charts and decorative graphics.
 4. All pages/images are assembled into one output file.
    - Multi-page output uses section headers so you know which page each block came from.
 
@@ -80,4 +85,4 @@ Documents: `.pdf` (each page rendered at 150 DPI)
 
 - Large images are automatically resized to keep API costs reasonable.
 - If a page contains only a chart/graph, a placeholder comment is inserted: `<!-- [non-text figure omitted] -->`.
-- Processing speed depends on the number of pages and Claude API response times.
+- Processing speed depends on the number of pages and Groq API response times.

@@ -23,11 +23,21 @@ import mimetypes
 import os
 import re
 import sys
+import fitz
 from pathlib import Path
 
-import anthropic
-import fitz  # PyMuPDF
+from openai import OpenAI
 from PIL import Image
+from dotenv import load_dotenv
+load_dotenv()
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+# NOTE:
+# PyMuPDF imports as `import fitz`. In your environment, importing `fitz`
+# currently crashes due to an unrelated package named `fitz`/web UI being
+# installed. To avoid that hard import-time failure, we import fitz lazily
+# only when we actually process a PDF, and we fail with a clear message.
+
+
 
 # ── configuration ──────────────────────────────────────────────────────────────
 
@@ -35,7 +45,7 @@ SUPPORTED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tiff
 PDF_DPI = 150           # rendering resolution for PDF pages
 MAX_IMAGE_LONG_SIDE = 1568  # Claude's recommended max; keeps token cost down
 
-MODEL = "claude-opus-4-5"
+MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 SYSTEM_PROMPT = """You are an expert OCR assistant. Your job is to extract all readable text from the image provided.
 
@@ -72,11 +82,24 @@ def image_to_b64(img_bytes: bytes) -> tuple[str, str]:
     return base64.standard_b64encode(data).decode("utf-8"), "image/png"
 
 
-def pdf_page_to_image_bytes(page: fitz.Page, dpi: int = PDF_DPI) -> bytes:
-    """Rasterise a PDF page and return PNG bytes."""
+def pdf_page_to_image_bytes(page, dpi: int = PDF_DPI) -> bytes:
+    """Rasterise a PDF page and return PNG bytes (PyMuPDF/fitz)."""
+    try:
+        import fitz  # PyMuPDF
+    except Exception as e:
+        raise RuntimeError(
+            "PyMuPDF import failed (import fitz). "
+            "Your environment seems to have an incompatible third-party 'fitz' package installed. "
+            "Fix by uninstalling the wrong package and installing PyMuPDF: "
+            "`pip uninstall -y fitz && pip install PyMuPDF`. "
+            f"Original error: {e}"
+        )
+
     mat = fitz.Matrix(dpi / 72, dpi / 72)
+
     pix = page.get_pixmap(matrix=mat, alpha=False)
     return pix.tobytes("png")
+
 
 
 def has_structure(text: str) -> bool:
@@ -87,32 +110,30 @@ def has_structure(text: str) -> bool:
 
 # ── Claude API call ────────────────────────────────────────────────────────────
 
-def extract_from_image(client: anthropic.Anthropic, img_bytes: bytes, label: str) -> str:
+def extract_from_image(client: OpenAI, img_bytes: bytes, label: str) -> str:
     """Send one image to Claude and return extracted text."""
     b64, media_type = image_to_b64(img_bytes)
     print(f"  → Processing {label} …", flush=True)
-    response = client.messages.create(
+    response = client.chat.completions.create(
         model=MODEL,
         max_tokens=4096,
-        system=SYSTEM_PROMPT,
         messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": [
                     {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": b64,
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{media_type};base64,{b64}"
                         },
                     },
                     {"type": "text", "text": "Extract all text from this image."},
                 ],
-            }
+            },
         ],
     )
-    return response.content[0].text.strip()
+    return response.choices[0].message.content.strip()
 
 
 # ── file collectors ────────────────────────────────────────────────────────────
@@ -140,7 +161,8 @@ def collect_inputs(paths: list[str]) -> list[Path]:
 
 # ── processing ─────────────────────────────────────────────────────────────────
 
-def process_file(client: anthropic.Anthropic, filepath: Path) -> list[tuple[str, str]]:
+def process_file(client, filepath: Path) -> list[tuple[str, str]]:
+
     """
     Process one file (image or PDF).
     Returns list of (label, extracted_text) tuples — one per page/image.
@@ -230,10 +252,18 @@ def main():
     print(f"\nFound {len(files)} file(s) to process.\n")
 
     # Initialise client (reads ANTHROPIC_API_KEY from env)
+    # try:
+    #     client = anthropic.Anthropic()
+    # except Exception as e:
+    #     print(f"[error] Could not initialise Anthropic client: {e}", file=sys.stderr)
+    #     sys.exit(1)
     try:
-        client = anthropic.Anthropic()
+        client = OpenAI(
+            api_key=GROQ_API_KEY,
+            base_url="https://api.groq.com/openai/v1",
+        )
     except Exception as e:
-        print(f"[error] Could not initialise Anthropic client: {e}", file=sys.stderr)
+        print(f"[error] Could not initialise Groq client: {e}", file=sys.stderr)
         sys.exit(1)
 
     # Extract text
