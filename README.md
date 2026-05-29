@@ -66,7 +66,7 @@ If you pass `-o myfile`, the correct extension (`.txt` or `.md`) is appended.
 
 ## Supported input formats
 
-Images: `.png` `.jpg` `.jpeg` `.webp` `.gif` `.bmp` `.tiff` `.tif`  
+Images: `.png` `.jpg` `.jpeg` `.webp` `.gif` `.bmp` `.tiff` `.tif` `.dng` 
 Documents: `.pdf` (each page rendered at 150 DPI)
 
 ---
