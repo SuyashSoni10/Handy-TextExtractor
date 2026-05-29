@@ -6,7 +6,7 @@ Usage:
     python extract_text.py <file_or_dir> [<file_or_dir> ...] [-o OUTPUT]
 
 Supports:
-    • Single image files  (.png, .jpg, .jpeg, .webp, .gif, .bmp, .tiff, .tif)
+    • Single image files  (.png, .jpg, .jpeg, .webp, .gif, .bmp, .tiff, .tif, .dng)
     • Multiple image files passed at once
     • PDF files (each page is rendered and sent to Claude)
     • A directory of images / PDFs
