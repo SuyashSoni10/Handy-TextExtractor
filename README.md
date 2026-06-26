@@ -1,4 +1,4 @@
-# main.py — Image & PDF Text Extractor
+# Image & PDF Text Extractor
 
 Extract human-readable text from images and PDFs using Llama 3.1 vision via Groq.  
 Tables are reconstructed as Markdown. Graphs and diagrams are skipped.
