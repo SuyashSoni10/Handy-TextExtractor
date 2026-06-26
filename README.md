@@ -1,4 +1,4 @@
-# extract_text.py — Image & PDF Text Extractor
+# main.py — Image & PDF Text Extractor
 
 Extract human-readable text from images and PDFs using Llama 3.1 vision via Groq.  
 Tables are reconstructed as Markdown. Graphs and diagrams are skipped.
@@ -28,26 +28,29 @@ The script loads it automatically on startup — no need to set environment vari
 ## Usage
 
 ```bash
-python extract_text.py <file_or_dir> [<file_or_dir> ...] [-o OUTPUT]
+python main.py <file_or_dir> [<file_or_dir> ...] [OUTPUT_NAME] [-o OUTPUT]
 ```
 
 ### Examples
 
 ```bash
 # Single image
-python extract_text.py scan.png
+python main.py scan.png
 
 # Single PDF (all pages)
-python extract_text.py report.pdf
+python main.py report.pdf
 
 # Multiple images
-python extract_text.py page1.jpg page2.jpg page3.png
+python main.py page1.jpg page2.jpg page3.png
 
 # A directory of images/PDFs
-python extract_text.py ./scans/
+python main.py ./scans/
+
+# A directory of images/PDFs with a custom output filename
+python main.py ./scans/ my-desired-filename
 
 # Custom output path
-python extract_text.py invoice.pdf -o invoice_text
+python main.py invoice.pdf -o invoice_text
 ```
 
 ---
