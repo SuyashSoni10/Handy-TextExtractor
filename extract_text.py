@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-extract_text.py — Extract text from images and PDFs using Claude vision.
+main.py — Extract text from images and PDFs using Claude vision.
 
 Usage:
-    python extract_text.py <file_or_dir> [<file_or_dir> ...] [-o OUTPUT]
+    python main.py <file_or_dir> [<file_or_dir> ...] [OUTPUT_NAME] [-o OUTPUT]
 
 Supports:
     • Single image files  (.png, .jpg, .jpeg, .webp, .gif, .bmp, .tiff, .tif, .dng)
@@ -41,7 +41,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # ── configuration ──────────────────────────────────────────────────────────────
 
-SUPPORTED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tiff", ".tif"}
+SUPPORTED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tiff", ".tif", ".dng"}
 PDF_DPI = 150           # rendering resolution for PDF pages
 MAX_IMAGE_LONG_SIDE = 1568  # Claude's recommended max; keeps token cost down
 
@@ -232,9 +232,9 @@ def main():
     )
     parser.add_argument(
         "inputs",
-        nargs="+",
+        nargs="*",
         metavar="FILE_OR_DIR",
-        help="Image file(s), PDF file(s), or directory containing them.",
+        help="Image file(s), PDF file(s), or directory containing them. If you pass an extra final argument that is not an existing path, it is treated as the output file name.",
     )
     parser.add_argument(
         "-o", "--output",
@@ -243,8 +243,18 @@ def main():
     )
     args = parser.parse_args()
 
+    raw_inputs = list(args.inputs)
+    input_paths = raw_inputs
+    output_name = None
+
+    if len(raw_inputs) >= 2:
+        last_candidate = raw_inputs[-1]
+        if not Path(last_candidate).exists():
+            input_paths = raw_inputs[:-1]
+            output_name = last_candidate
+
     # Collect and validate inputs
-    files = collect_inputs(args.inputs)
+    files = collect_inputs(input_paths)
     if not files:
         print("No supported files found.", file=sys.stderr)
         sys.exit(1)
@@ -285,6 +295,10 @@ def main():
     if args.output:
         out_path = Path(args.output)
         # Correct extension if user didn't specify one
+        if out_path.suffix.lower() not in (".txt", ".md"):
+            out_path = out_path.with_suffix(f".{ext}")
+    elif output_name:
+        out_path = Path(output_name)
         if out_path.suffix.lower() not in (".txt", ".md"):
             out_path = out_path.with_suffix(f".{ext}")
     else:
